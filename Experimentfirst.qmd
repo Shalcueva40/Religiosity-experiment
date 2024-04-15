@@ -10,7 +10,7 @@ code-link: true
 
 
 
-**Topic**:In this research we want to elaborate the expression of the anthropologist Malinosky, who argued that "both magic and religion arise and function in situations of emotional stress". In order to do that we want to correlate the level of happiness and the religiosity among different countries.
+**Topic**:In this research I want to elaborate the expression of the anthropologist Malinosky, who argued that "both magic and religion arise and function in situations of emotional stress". 
 
 \#**Data**
 
