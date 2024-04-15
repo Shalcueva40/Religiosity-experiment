@@ -1,0 +1,371 @@
+---
+title: "playground"
+format: html
+html:
+code-link: true
+---
+
+
+
+
+
+
+**Topic**:In this research we want to elaborate the expression of the anthropologist Malinosky, who argued that "both magic and religion arise and function in situations of emotional stress". In order to do that we want to correlate the level of happiness and the religiosity among different countries.
+
+\#**Data**
+
+Sourced from <https://ess.sikt.no/en/?tab=overview>
+
+The file can be downloaded here <https://liveunibo-my.sharepoint.com/:x:/g/personal/ahmad_tahmid_studio_unibo_it/EbGzXbt5QrVBg9oq83QTZ1MBVLW0Ou3HUNQVOGh9NG6FrQ?e=Md506M>
+
+Selected countries: Belgium(western Europe) Czechia(central Europe)\|\| ESS 5
+
+Selected Variables\>\> aesfdrk - Feeling of safety of walking alone in local area after dark
+
+brghmwr - How often worry about your home being burgled
+
+crmvct - Respondent or household member victim of burglary/assault last 5 years
+
+crvctwr - How often worry about becoming a victim of violent crime
+
+dscretn - Discrimination of respondent's group: ethnic group
+
+dscrntn - Discrimination of respondent's group: nationality
+
+dscrrce - Discrimination of respondent's group: colour or race
+
+dscrrlg - Discrimination of respondent's group: religion
+
+happy - How happy are you
+
+health - Subjective general health
+
+hlthhmp - Hampered in daily activities by illness/disability/infirmity/mental problem
+
+rlgdgr - How religious are you
+
+## Analysis
+
+```{r}
+#| output: false
+library(tidyverse)
+
+ESSdf<- read.csv("ESSdf.csv")
+```
+
+First I explore the the variable "happy". The survey question is scored on a scale of 0 to 10, where 10 being"extremely happy".
+
+```{r}
+unique(ESSdf$happy)
+```
+
+Values of 77, 88, 99 denote missing categories such as Refusal\*, Don't know\*, No answer\* respectively.
+
+I recode as missing the following values
+
+```{r}
+#| output: false
+ESSdf %>%
+
+mutate(happy = if_else(happy %in% c(77, 88, 99), NA, happy))
+
+```
+
+**Is one country happier than the other?**
+
+We can now proceed analysing the distribution of happiness among our sample of Belgium citizens.
+
+```{r}
+ESSdf %>%
+
+filter(cntry=="BE") %>%
+
+group_by(happy) %>%
+
+ggplot(aes(happy)) +geom_histogram()
+
+```
+
+But how does it compare with Czechia? lets do a density plot
+
+```{r}
+
+ESSdf %>%
+
+ggplot(aes(happy, fill=cntry)) + geom_density(alpha=0.3) + xlim(0,10)
+
+```
+
+Seemingly Belgians are happier on average as their responses are more skewed to the right
+
+**Is there a correlation between religiosity and happiness for the responses that we have?**
+
+We turn to the variable rlgdgr , that explores the question, "how religious are you" and record the missing values.
+
+```{r}
+#| output: false
+ESSdf %>%
+
+mutate(rlgdgr = if_else(rlgdgr %in% c(77, 88, 99), NA, rlgdgr))
+```
+
+```{r}
+cor(ESSdf$rlgdgr, ESSdf$happy, use = "complete.obs")
+```
+
+We have a weak positive correlation, in order to make sure it's significant we proceed testing the outcome.
+
+We are curious about any statistically significant regression coefficient.
+
+```{r}
+rgrss1<- lm(rlgdgr ~ happy, data = ESSdf)
+summary(rgrss1)
+```
+
+The regression coefficient is statistically significant.
+
+Visualize the relationship using a regression line.
+
+```{r}
+ggplot(ESSdf, aes(x = happy, y = rlgdgr)) + geom_smooth(method = "lm") + xlim(0,10) + ylim(0,10)
+```
+
+**But what about my place of birth. Does it matter?**
+
+```{r}
+rgrss2<- lm(rlgdgr ~ cntry, data = ESSdf)
+
+rgrss3<- lm(rlgdgr ~ happy + cntry, data = ESSdf)
+
+summary(rgrss2)
+
+summary(rgrss3)
+```
+
+On a single regression model, country of origin is statistically significant.
+
+When regressed with happiness factor, country of origin is not statistically signicant (at significance level 5%).
+
+**Are discriminated people more religious?**
+
+We use dscretn/dscrntn/dscrrce/ dscrrlg for a multivariate analysis
+
+```{r}
+rgrss4<- lm(rlgdgr ~ dscretn + dscrntn + dscrrce + dscrrlg , data = ESSdf)
+summary(rgrss4)
+```
+
+None of the coefficients are statistically significant. Take note at the p value of the F statistic too.
+
+This particular multiple regression model is voided! We shall revisit this later after adjusting for survey weights.
+
+Nevertheless we probe a more simplistic question: instead of discrimination against nationality or ethnicity whether perceived discrimination against religious identity has anything to do with religiosity.
+
+```{r}
+#| output: false
+rgrss5<-lm(rlgdgr ~ dscrrlg, data = ESSdf)
+
+summary(rgrss5)
+```
+
+**Relations between religiosity and fear/anxiety/concern**
+
+In order to understand what causes this increase level of stress among people coming from a different background we want to understand if fear has a positive correlation with religiousity.
+
+Make use of variables aesfdrk value 1 to 4, with 4 denoting "Very afraid" and values 7,8,9 denote missing categories such as "Refusal", "Don't know", "No answer" respectively.
+
+```{r}
+#| output: false
+
+ESSdf %>%
+
+mutate(aesfdrk = if_else(aesfdrk %in% c(7, 8, 9), NA, aesfdrk))
+
+```
+
+```{r}
+cor(ESSdf$rlgdgr, ESSdf$aesfdrk, use = "complete.obs")
+```
+
+What we obtain is a weak positive correlation between fear and religiosity. Meaning people tend to be slightly more religious as level of stress increses.
+
+```{r}
+#| output: false
+
+ESSdf %>%
+
+mutate(brghmwr = if_else(brghmwr %in% c(7, 8, 9), NA, brghmwr))
+
+```
+
+```{r}
+cor(ESSdf$rlgdgr, ESSdf$aesfdrk, use = "complete.obs")
+```
+
+People less prone to worry may be more religious than not.
+
+**We then decided to test other factors that could influence the level of religiosity, these factors can be strongly correlated with fear aswell.**
+
+It is a part of academic literature that randomized control trials for health and no health insurance impacts church donations! https://academic.oup.com/qje/article/135/4/1799/5861944
+
+We use variable health values 1 to 5, with 5 being "Very Bad" and values 7,8,9 denote missing categories such as Refusal\*, Don't know\*, No answer\* respectively
+
+Variable hlthhmp, that is the variable representing the daily feelings of incapability due to health limitations. Values = 1 being "Yes a lot", values = 2 are "Yes to some extent", values = 3 are "No".
+
+Recode the missing values.
+
+```{r}
+#| output: false
+ESSdf %>%
+
+mutate(health = if_else(health %in% c(7, 8, 9), NA, health))
+
+ESSdf %>%
+
+mutate(hlthhmp = if_else(hlthhmp %in% c(7, 8, 9), NA, hlthhmp))
+
+```
+
+Now, so far we strictly talked about how variables correlate and not necessarily causation. We still stick to it albeit acknowledging that using simple correlation or regression for ordinal variables instead of ranked correlations or logistic regressions is reductive.
+
+As a redress we use Spearman correlation coefficient (rho).
+
+```{r}
+
+cor.test(ESSdf$health, ESSdf$rlgdgr, method = 'spearman')
+
+#| output: false
+cor(ESSdf$rlgdgr, ESSdf$health, use = "complete.obs")
+```
+
+The p-value shows that the correlation is statistically significant, we can therefore assume to have a weak positive correlation between health and religiosity.
+
+We want to however intuitively investigate the relations between variable hlthhmp nad rlgdgr by using visual cues
+
+First , we convert to factor hlthhmp with 3 levels- values with 1 are "Yes a lot", values with 2 are "Yes to some extent", values with 3 are "No".
+
+```{r}
+ESSdf$hlthhmp <- factor(ESSdf$hlthhmp, levels = c(1, 2, 3),
+
+labels = c("Yes a lot", "Yes to some extent", "No"))
+
+ggplot(ESSdf, aes(x = hlthhmp, y = rlgdgr)) +
+
+geom_boxplot() +
+
+labs(x = "Health Hampers Activities", y = "Religiosity") +
+
+ylim(0,10)
+```
+
+We can asssert that people who are more hampered by health have a higher median response for religiosity.
+
+**Survey weights**
+
+We have ignored a subtle but important point for our analysis so far in that we have ignored the variables dweight(designweight), pspwght(post-stratification weight), pweight(population size weight) and anweight (analysis weight).
+
+More information on ESS Guide to Using Weights and Sample Design can found here..{attach link}
+
+We replicate some of our previous regressions after adjusting for survey weights
+
+```{r}
+#| output: false
+library(survey)
+
+library(srvyr)
+
+library(haven)
+
+data_weighted<- ESSdf %>%
+
+as_survey(weights = c(dweight, pspwght, pweight))
+```
+
+recall the multiple regression named rgrss4 for the discrimination variables
+
+We now repeat regression rgrss4 for discrimination variables but with weighted data.
+
+```{r}
+#| output: false
+rgrss4_w<- svyglm(rlgdgr ~ dscretn + dscrntn + dscrrce + dscrrlg , design = data_weighted)
+```
+
+```{r}
+summary(rgrss4_w)
+
+```
+
+Discrimination based on ethnicity is now statistically significant! The coefficients of all regressors will change even if they are not statistically significant !
+
+\########################################################################
+
+## Miscellaneous: Italians and religiosity
+
+I want to investigate if religiosity has anything to do with the divide between northern and southern Italy
+
+\## Donwload data <https://liveunibo-my.sharepoint.com/:x:/g/personal/ahmad_tahmid_studio_unibo_it/ERORzxZOLhNFhuGvjGNq3KsBVHDzEW8nnxdZ5RXl5xGwkQ?e=3mPmlN> Italy: ESS rounds 1,6,8,9,10
+
+rlgdgr - How religious are you
+
+regionit - Region, Italy values corresponding to regions 1 to 20
+
+First, we recode the missing values.
+
+```{r}
+#| output: false
+df1<- read.csv("ES.csv")
+
+df1 %>%
+
+mutate(rlgdgr = if_else(rlgdgr %in% c(77, 88, 99), NA, rlgdgr))
+```
+
+Then I create dummy variable Italy_north (and Italy_south) corresponding to repsondents who hail from regions Aosta Valley/Piedmont/Liguria/Lombardy/Emilia-Romagna/Veneto/Friuli-Venezia Giulia/Trentino-Alto Adige .
+
+```{r}
+#| output: false
+df1 <-df1 %>%
+
+mutate(Italy_north = as.numeric(regionit >= 1 & regionit <= 8),
+
+Italy_south = as.numeric(regionit >= 9 & regionit <= 20))
+```
+
+```{r}
+correlation_north <- cor(df1$rlgdgr, df1$Italy_north, use = "complete.obs")
+
+correlation_north
+```
+
+Belonging to northern part of Italy is negatively correlated with religiosity.
+
+Now I find the regression coefficient for the dummy variable.
+
+```{r}
+#| output: false
+rgrss6<- lm(rlgdgr ~ Italy_north + Italy_south, data = df1)
+summary(rgrss6)
+```
+
+**Finally we are interested in investigating how the religiosity of Italians have changed over time?**
+
+```{r}
+df1 %>%
+     mutate(rlgdgr = case_when(
+        rlgdgr == 0 ~ "Not Religious",
+         rlgdgr >= 1 & rlgdgr <= 3 ~ "Nominally religious",
+        rlgdgr >= 4 & rlgdgr <= 6 ~ "Moderately Religious",
+         rlgdgr >= 7 ~ "Highly Religious"
+      )) %>%
+    mutate(rlgdgr = factor(rlgdgr, levels = c("Not Religious", "Nominally religious", "Moderately Religious", "Highly Religious"))) %>%
+     count(name, rlgdgr) %>%
+     group_by(name) %>%
+    mutate(perc = n / sum(n)) %>%
+    ggplot(aes(x = name, y = perc, group = rlgdgr, colour = rlgdgr)) +
+     geom_line() +
+     theme_bw() +
+     labs(x = "ESS rounds", y = "Religiosity (proportion)") +
+     scale_colour_discrete(name = NULL)   
+```
+
+Between 2002 and 2020 the share of Highly religious people have increased and the Non-religious share has remained, more or less, the same.
